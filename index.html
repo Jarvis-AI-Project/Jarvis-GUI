@@ -3,34 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jarvis Artifical Intelligent</title>
+    <title>Jarvis</title>
     <style>
-        :root { --neon: #00f2ff; --bg: #05080a; --panel: #0d1117; }
-        body { background: var(--bg); color: #c9d1d9; font-family: monospace; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        #header { padding: 15px; border-bottom: 2px solid var(--neon); text-align: center; }
-        h1 { margin: 0; font-size: 1.2rem; color: var(--neon); letter-spacing: 5px; }
-        #chat-box { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .msg { max-width: 85%; padding: 12px; border-radius: 5px; line-height: 1.5; }
-        .user { align-self: flex-end; background: #161b22; color: #58a6ff; border: 1px solid #30363d; }
-        .jarvis { align-self: flex-start; background: #0d1117; border: 1px solid var(--neon); }
-        #input-area { padding: 20px; background: var(--panel); display: flex; gap: 10px; border-top: 1px solid #30363d; }
-        input[type="text"] { flex-grow: 1; background: #010409; border: 1px solid #30363d; padding: 12px; color: var(--neon); outline: none; }
-        button { background: transparent; border: 1px solid var(--neon); color: var(--neon); padding: 0 15px; cursor: pointer; font-weight: bold; }
-        button:hover { background: var(--neon); color: black; }
-        .loading { font-size: 10px; color: var(--neon); display: none; padding: 0 20px 10px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background-color: #0d1117; 
+            color: #c9d1d9;
+            font-family: -apple-system, system-ui, sans-serif;
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh;
+        }
+
+        header {
+            padding: 20px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: bold;
+            color: #58a6ff;
+        }
+
+        #chat-box {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .msg {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 15px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .user {
+            align-self: flex-end;
+            background-color: #1f6feb;
+            color: white;
+        }
+
+        .jarvis {
+            align-self: flex-start;
+            background-color: #21262d;
+            color: #c9d1d9;
+        }
+
+        /* Giriş Alanı - Her Şey Kutunun İçinde */
+        .input-wrapper {
+            padding: 20px;
+            background: #0d1117;
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 25px;
+            padding: 5px 10px 5px 15px;
+        }
+
+        #user-input {
+            flex-grow: 1;
+            border: none;
+            background: transparent;
+            padding: 10px;
+            outline: none;
+            font-size: 15px;
+            color: #ecf2f8;
+        }
+
+        .action-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+
+        /* Dosya İkonu */
+        .file-icon { color: #8b949e; font-size: 20px; margin-right: 5px; }
+        
+        /* Gönder Butonu (Kutu İçinde Daire) */
+        .send-btn {
+            background: #58a6ff;
+            color: #ffffff;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .send-btn:hover { background: #1f6feb; }
+
+        #loading { text-align: center; font-size: 12px; color: #8b949e; margin-bottom: 5px; display: none; }
     </style>
 </head>
 <body>
 
-    <div id="header"><h1>JARVIS</h1></div>
-    <div id="chat-box"><div class="msg jarvis">Size nasıl yardımcı olabilirim?.</div></div>
-    <div id="loading" class="loading">VERİ İŞLENİYOR...</div>
+    <header>Jarvis</header>
 
-    <div id="input-area">
-        <input type="file" id="file-input" style="display:none" onchange="handleFileUpload(event)">
-        <button onclick="document.getElementById('file-input').click()">DOSYA</button>
-        <input type="text" id="user-input" placeholder="Mesaj yazın..." autocomplete="off">
-        <button id="send-btn">GÖNDER</button>
+    <div id="chat-box">
+        <div class="msg jarvis">Selam, ben Jarvis. Yardıma hazırım!</div>
+    </div>
+    
+    <div id="loading">Düşünüyor...</div>
+
+    <div class="input-wrapper">
+        <div class="input-container">
+            <input type="file" id="file-input" style="display:none" onchange="handleFile(event)">
+            <button class="action-btn file-icon" onclick="document.getElementById('file-input').click()" title="Dosya Gönder">📎</button>
+            
+            <input type="text" id="user-input" placeholder="Bir şeyler yazın..." autocomplete="off">
+            
+            <button id="send-btn" class="action-btn send-btn">↑</button>
+        </div>
     </div>
 
     <script>
@@ -38,56 +133,52 @@
         const userInput = document.getElementById('user-input');
         const loading = document.getElementById('loading');
         const API_URL = "https://jarvis-omega-eosin.vercel.app/api/chat";
-        let chatHistory = [];
+        let history = [];
 
-        function addMessage(role, text) {
+        function add(role, text) {
             const div = document.createElement('div');
             div.className = `msg ${role === 'user' ? 'user' : 'jarvis'}`;
             div.innerText = text;
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
-            if (role !== 'status') chatHistory.push({ role: role === 'user' ? 'user' : 'assistant', content: text });
+            if (role !== 'status') history.push({ role: role === 'user' ? 'user' : 'assistant', content: text });
         }
 
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
+        async function handleFile(e) {
+            const file = e.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const content = e.target.result;
-                addMessage('user', `[Dosya: ${file.name}] İçeriği analiz et.`);
-                chatHistory.push({ role: "user", content: `Dosya içeriği (${file.name}):\n\n${content}` });
-                processRequest();
+            const r = new FileReader();
+            r.onload = async (ev) => {
+                add('user', `Dosya yüklendi: ${file.name}`);
+                history.push({ role: "user", content: `Dosya içeriği: ${ev.target.result}` });
+                process();
             };
-            reader.readAsText(file);
+            r.readAsText(file);
         }
 
-        async function processRequest() {
+        async function process() {
+            const t = userInput.value.trim();
+            if (!t && (!history.length || history[history.length-1].role !== 'user')) return;
+            if (t) { add('user', t); userInput.value = ''; }
+            
             loading.style.display = 'block';
             try {
-                const response = await fetch(API_URL, {
+                const res = await fetch(API_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ messages: chatHistory })
+                    body: JSON.stringify({ messages: history })
                 });
-                const data = await response.json();
-                if (data.choices) addMessage('assistant', data.choices[0].message.content);
-            } catch (error) {
-                addMessage('assistant', "BAĞLANTI HATASI.");
+                const d = await res.json();
+                if (d.choices) add('assistant', d.choices[0].message.content);
+            } catch (err) {
+                add('assistant', "Bağlantı hatası.");
             } finally {
                 loading.style.display = 'none';
             }
         }
 
-        document.getElementById('send-btn').addEventListener('click', () => {
-            const text = userInput.value.trim();
-            if (!text) return;
-            addMessage('user', text);
-            userInput.value = '';
-            processRequest();
-        });
-
-        userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') document.getElementById('send-btn').click(); });
+        document.getElementById('send-btn').addEventListener('click', process);
+        userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') process(); });
     </script>
 </body>
 </html>
