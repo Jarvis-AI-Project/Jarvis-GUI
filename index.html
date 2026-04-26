@@ -18,9 +18,37 @@
         header {
             padding: 20px;
             text-align: center;
-            font-size: 22px;
+            font-size: 24px;
             font-weight: bold;
             color: #58a6ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            background: transparent;
+            border: 1px solid #30363d;
+            color: #8b949e;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-small:hover { border-color: #8b949e; color: #fff; }
+        
+        #load-btn { 
+            display: none; 
+            background: rgba(35, 134, 54, 0.1); 
+            border-color: #238636; 
+            color: #3fb950; 
         }
 
         #chat-box {
@@ -30,6 +58,9 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            background-color: #161b22;
+            margin: 0 20px;
+            border-radius: 12px;
         }
 
         .msg {
@@ -40,31 +71,17 @@
             line-height: 1.5;
         }
 
-        .user {
-            align-self: flex-end;
-            background-color: #1f6feb;
-            color: white;
-        }
+        .user { align-self: flex-end; background-color: #1f6feb; color: white; }
+        .jarvis { align-self: flex-start; background-color: #21262d; color: #c9d1d9; }
 
-        .jarvis {
-            align-self: flex-start;
-            background-color: #21262d;
-            color: #c9d1d9;
-        }
-
-        /* Giriş Alanı - Her Şey Kutunun İçinde */
-        .input-wrapper {
-            padding: 20px;
-            background: #0d1117;
-        }
-
+        .input-wrapper { padding: 20px; background: #0d1117; }
         .input-container {
             display: flex;
             align-items: center;
             background: #161b22;
             border: 1px solid #30363d;
-            border-radius: 25px;
-            padding: 5px 10px 5px 15px;
+            border-radius: 12px;
+            padding: 8px 12px;
         }
 
         #user-input {
@@ -78,53 +95,57 @@
         }
 
         .action-btn {
+            background: #58a6ff;
+            border: none;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .file-btn {
             background: transparent;
             border: none;
             cursor: pointer;
-            padding: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: 0.2s;
+            padding: 5px;
+            opacity: 0.6;
+            transition: 0.3s;
         }
 
-        /* Dosya İkonu */
-        .file-icon { color: #8b949e; font-size: 20px; margin-right: 5px; }
-        
-        /* Gönder Butonu (Kutu İçinde Daire) */
-        .send-btn {
-            background: #58a6ff;
-            color: #ffffff;
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            font-weight: bold;
-            font-size: 18px;
-        }
-
-        .send-btn:hover { background: #1f6feb; }
+        .file-btn:hover { opacity: 1; }
+        .file-btn svg { width: 24px; height: 24px; fill: #8b949e; }
 
         #loading { text-align: center; font-size: 12px; color: #8b949e; margin-bottom: 5px; display: none; }
     </style>
 </head>
 <body>
 
-    <header>Jarvis</header>
+    <header>
+        <div style="width: 100px;"></div>
+        <div>Jarvis</div>
+        <div class="header-actions">
+            <button id="load-btn" class="btn-small" onclick="loadHistory()">Devam Et</button>
+            <button class="btn-small" onclick="clearHistory()">Temizle</button>
+        </div>
+    </header>
 
-    <div id="chat-box">
-        <div class="msg jarvis">Selam, ben Jarvis. Yardıma hazırım!</div>
-    </div>
-    
-    <div id="loading">Düşünüyor...</div>
+    <div id="chat-box"></div>
+    <div id="loading">...</div>
 
     <div class="input-wrapper">
         <div class="input-container">
             <input type="file" id="file-input" style="display:none" onchange="handleFile(event)">
-            <button class="action-btn file-icon" onclick="document.getElementById('file-input').click()" title="Dosya Gönder">📎</button>
-            
-            <input type="text" id="user-input" placeholder="Bir şeyler yazın..." autocomplete="off">
-            
-            <button id="send-btn" class="action-btn send-btn">↑</button>
+            <button class="file-btn" onclick="document.getElementById('file-input').click()">
+                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>
+            </button>
+            <input type="text" id="user-input" placeholder="Mesaj yazın veya dosya ekleyin..." autocomplete="off">
+            <button id="send-btn" class="action-btn">Gönder</button>
         </div>
     </div>
 
@@ -132,16 +153,49 @@
         const chatBox = document.getElementById('chat-box');
         const userInput = document.getElementById('user-input');
         const loading = document.getElementById('loading');
+        const loadBtn = document.getElementById('load-btn');
         const API_URL = "https://jarvis-omega-eosin.vercel.app/api/chat";
         let history = [];
 
-        function add(role, text) {
+        window.onload = () => {
+            const saved = localStorage.getItem('jarvis_v3_history');
+            if (saved) loadBtn.style.display = 'block';
+            renderMsg('jarvis', 'Ben Jarvis. Nasıl yardımcı olabilirim?');
+        };
+
+        function loadHistory() {
+            const saved = localStorage.getItem('jarvis_v3_history');
+            if (saved) {
+                history = JSON.parse(saved);
+                chatBox.innerHTML = '';
+                history.forEach(m => renderMsg(m.role === 'user' ? 'user' : 'jarvis', m.content));
+                loadBtn.style.display = 'none';
+            }
+        }
+
+        function clearHistory() {
+            if(confirm("Sohbeti sıfırlamak istiyor musunuz?")) {
+                localStorage.removeItem('jarvis_v3_history');
+                history = [];
+                chatBox.innerHTML = '';
+                loadBtn.style.display = 'none';
+                renderMsg('jarvis', 'Sohbet sıfırlandı.');
+            }
+        }
+
+        function renderMsg(role, text) {
             const div = document.createElement('div');
-            div.className = `msg ${role === 'user' ? 'user' : 'jarvis'}`;
+            div.className = `msg ${role}`;
             div.innerText = text;
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
-            if (role !== 'status') history.push({ role: role === 'user' ? 'user' : 'assistant', content: text });
+        }
+
+        function add(role, text) {
+            renderMsg(role === 'user' ? 'user' : 'jarvis', text);
+            history.push({ role: role === 'user' ? 'user' : 'assistant', content: text });
+            localStorage.setItem('jarvis_v3_history', JSON.stringify(history));
+            loadBtn.style.display = 'none';
         }
 
         async function handleFile(e) {
@@ -149,7 +203,7 @@
             if (!file) return;
             const r = new FileReader();
             r.onload = async (ev) => {
-                add('user', `Dosya yüklendi: ${file.name}`);
+                add('user', `Dosya: ${file.name}`);
                 history.push({ role: "user", content: `Dosya içeriği: ${ev.target.result}` });
                 process();
             };
@@ -171,7 +225,7 @@
                 const d = await res.json();
                 if (d.choices) add('assistant', d.choices[0].message.content);
             } catch (err) {
-                add('assistant', "Bağlantı hatası.");
+                renderMsg('jarvis', "Bağlantı hatası.");
             } finally {
                 loading.style.display = 'none';
             }
