@@ -136,7 +136,7 @@
     </header>
 
     <div id="chat-box"></div>
-    <div id="loading">...</div>
+    <div id="loading">Jarvis düşünüyor...</div>
 
     <div class="input-wrapper">
         <div class="input-container">
@@ -144,95 +144,139 @@
             <button class="file-btn" onclick="document.getElementById('file-input').click()">
                 <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>
             </button>
-            <input type="text" id="user-input" placeholder="Mesaj yazın veya dosya ekleyin..." autocomplete="off">
+            <input type="text" id="user-input" placeholder="Bir şeyler yazın..." autocomplete="off">
             <button id="send-btn" class="action-btn">Gönder</button>
         </div>
     </div>
 
     <script>
-        const chatBox = document.getElementById('chat-box');
-        const userInput = document.getElementById('user-input');
-        const loading = document.getElementById('loading');
-        const loadBtn = document.getElementById('load-btn');
-        const API_URL = "https://jarvis-omega-eosin.vercel.app/api/chat";
-        let history = [];
+      const chatBox = document.getElementById('chat-box');
+const userInput = document.getElementById('user-input');
+const loading = document.getElementById('loading');
+const loadBtn = document.getElementById('load-btn');
+const API_URL = "https://jarvis-omega-eosin.vercel.app/api/chat";
+let history = [];
 
-        window.onload = () => {
-            const saved = localStorage.getItem('jarvis_v3_history');
-            if (saved) loadBtn.style.display = 'block';
-            renderMsg('jarvis', 'Ben Jarvis. Nasıl yardımcı olabilirim?');
-        };
+// Sayfa yüklendiğinde hafızayı kontrol et
+window.onload = () => {
+    const saved = localStorage.getItem('jarvis_v3_history');
+    if (saved) {
+        loadBtn.style.display = 'block';
+    }
+    renderMsg('jarvis', 'Ben Jarvis. Nasıl yardımcı olabilirim?');
+};
 
-        function loadHistory() {
-            const saved = localStorage.getItem('jarvis_v3_history');
-            if (saved) {
-                history = JSON.parse(saved);
-                chatBox.innerHTML = '';
-                history.forEach(m => renderMsg(m.role === 'user' ? 'user' : 'jarvis', m.content));
-                loadBtn.style.display = 'none';
-            }
-        }
+// Hafızadaki sohbeti geri yükle
+function loadHistory() {
+    const saved = localStorage.getItem('jarvis_v3_history');
+    if (saved) {
+        history = JSON.parse(saved);
+        chatBox.innerHTML = '';
+        history.forEach(m => renderMsg(m.role === 'user' ? 'user' : 'jarvis', m.content));
+        loadBtn.style.display = 'none';
+    }
+}
 
-        function clearHistory() {
-            if(confirm("Sohbeti sıfırlamak istiyor musunuz?")) {
-                localStorage.removeItem('jarvis_v3_history');
-                history = [];
-                chatBox.innerHTML = '';
-                loadBtn.style.display = 'none';
-                renderMsg('jarvis', 'Sohbet sıfırlandı.');
-            }
-        }
+// Her şeyi sıfırla
+function clearHistory() {
+    if(confirm("Tüm hafızayı silmek istediğine emin misin?")) {
+        localStorage.removeItem('jarvis_v3_history');
+        history = [];
+        chatBox.innerHTML = '';
+        loadBtn.style.display = 'none';
+        renderMsg('jarvis', 'Hafıza temizlendi, sistem yeniden başlatıldı.');
+    }
+}
 
-        function renderMsg(role, text) {
-            const div = document.createElement('div');
-            div.className = `msg ${role}`;
-            div.innerText = text;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
+// Mesajı ekrana bas (XSS korumalı ve karakter dostu)
+function renderMsg(role, text) {
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    // Karakter bozulmalarını önlemek için textContent kullanıyoruz
+    div.textContent = text; 
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
 
-        function add(role, text) {
-            renderMsg(role === 'user' ? 'user' : 'jarvis', text);
-            history.push({ role: role === 'user' ? 'user' : 'assistant', content: text });
-            localStorage.setItem('jarvis_v3_history', JSON.stringify(history));
-            loadBtn.style.display = 'none';
-        }
+// Geçmişe ekle ve localStorage'a mühürle
+function add(role, text) {
+    renderMsg(role === 'user' ? 'user' : 'jarvis', text);
+    history.push({ role: role === 'user' ? 'user' : 'assistant', content: text });
+    localStorage.setItem('jarvis_v3_history', JSON.stringify(history));
+    loadBtn.style.display = 'none';
+}
 
-        async function handleFile(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const r = new FileReader();
-            r.onload = async (ev) => {
-                add('user', `Dosya: ${file.name}`);
-                history.push({ role: "user", content: `Dosya içeriği: ${ev.target.result}` });
-                process();
-            };
-            r.readAsText(file);
-        }
+// Dosya işleme (İçeriği okuyup modele gönderir)
+async function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = async (ev) => {
+        const fileContent = ev.target.result;
+        add('user', `Dosya yüklendi: ${file.name}`);
+        // Dosya içeriğini modele bir bağlam olarak iletiyoruz
+        process(`[Dosya: ${file.name}]\nİçerik: ${fileContent}`);
+    };
+    r.readAsText(file, "UTF-8"); // Karakter hatasını önlemek için UTF-8 zorlaması
+}
 
-        async function process() {
-            const t = userInput.value.trim();
-            if (!t && (!history.length || history[history.length-1].role !== 'user')) return;
-            if (t) { add('user', t); userInput.value = ''; }
+// Ana işlem motoru
+async function process(customPrompt = null) {
+    const text = userInput.value.trim();
+    if (!text && !customPrompt) return;
+
+    const messageToSend = customPrompt || text;
+    
+    // Eğer kullanıcı yazı yazdıysa ekrana bas
+    if (!customPrompt && text) {
+        add('user', text);
+        userInput.value = '';
+    }
+
+    loading.style.display = 'block';
+
+    try {
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json; charset=UTF-8" 
+            },
+            body: JSON.stringify({ 
+                messages: history,
+                model: "llama-3.3" // Backend tarafındaki model ismine göre güncelleyebilirsin
+            })
+        });
+
+        if (!response.ok) throw new Error(`Sunucu hatası: ${response.status}`);
+
+        const data = await response.json();
+        
+        if (data.choices && data.choices[0].message) {
+            let aiResponse = data.choices[0].message.content;
             
-            loading.style.display = 'block';
-            try {
-                const res = await fetch(API_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ messages: history })
-                });
-                const d = await res.json();
-                if (d.choices) add('assistant', d.choices[0].message.content);
-            } catch (err) {
-                renderMsg('jarvis', "Bağlantı hatası.");
-            } finally {
-                loading.style.display = 'none';
-            }
-        }
+            // Llama bazen Türkçe karakterlerde saçmalarsa diye ufak bir temizlik
+            aiResponse = aiResponse.replace(/\\u([\d\w]{4})/gi, (match, grp) => {
+                return String.fromCharCode(parseInt(grp, 16));
+            });
 
-        document.getElementById('send-btn').addEventListener('click', process);
-        userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') process(); });
+            add('assistant', aiResponse);
+        } else {
+            throw new Error("API boş yanıt döndü.");
+        }
+    } catch (err) {
+        console.error("Hata:", err);
+        renderMsg('jarvis', "Bağlantı koptu veya model yanıt vermedi.");
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
+// Tetikleyiciler
+document.getElementById('send-btn').addEventListener('click', () => process());
+userInput.addEventListener('keypress', (e) => { 
+    if(e.key === 'Enter') process(); 
+});
+
     </script>
 </body>
 </html>
